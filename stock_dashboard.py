@@ -7,15 +7,26 @@ from datetime import datetime, timedelta
 import pytz
 import ta
 
-# Fetch stock data based on ticker, period, & interval through Yahoo Finance API
+# Validate ticker symbol to check if it exists or is delisted
+def validate_ticker(ticker):
+    try:
+        ticker_obj = yf.Ticker(ticker)
+        info = ticker_obj.info
+        if not info or "regularMarketPrice" not in info:
+            st.error(f"Ticker '{ticker}' not found or delisted.")
+            return False
+        return True
+    except Exception:
+        st.error(f"Failed to validate ticker '{ticker}'.")
+        return False
+
+# Fetch stock data using the Ticker object for more reliability
 def fetch_stock_data(ticker, period, interval):
     try:
-        end_date = datetime.now()
-        if period == '1wk':
-            start_date = end_date - timedelta(days=7)
-        else:
-            start_date = end_date - timedelta(days=int(period[:-1]))
-        data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
+        if not validate_ticker(ticker):
+            return None
+        ticker_obj = yf.Ticker(ticker)
+        data = ticker_obj.history(period=period, interval=interval)
         if data.empty:
             st.error(f"No data found for {ticker}. Please check the ticker symbol and try again.")
             return None
